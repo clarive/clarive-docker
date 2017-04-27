@@ -1,0 +1,4 @@
+mongo:
+    dbname: clarive
+    client:
+        host: 'db:27017'
