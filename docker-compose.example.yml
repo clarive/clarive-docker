@@ -1,7 +1,7 @@
-version: '2'
+version: '3'
 
 networks:
-  back:
+  clarive:
     driver: bridge
 
 services:
@@ -10,37 +10,51 @@ services:
     volumes:
       - ./data/runtime/db:/data/db
       - ./data/dump:/dump
-    command: mongod --smallfiles
+    command: mongod
     networks:
-      - back
-  web:
-    image: docker.clarive.com/clarive-web:latest
-    environment:
-        - CLARIVE_ENV=clarive
+      - clarive
+  nginx:
+    user: clarive
+    image: clarive/clarive:latest
     restart: always
-    links:
-      - db:db
-    volumes:
-      - ./logs:/opt/clarive/logs
-      - ./jobs:/opt/clarive/jobs
-      - ./tmp:/opt/clarive/tmp
-      - ./config:/opt/clarive/config:ro
-      - ./etc/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
-      - "8080:3000"
+      - 8080:8080
+    volumes:
+      - ./logs:/opt/clarive/logs
+      - ./config:/opt/clarive/config
+      - ./tmp:/opt/clarive/tmp
     networks:
-      - back
-  disp:
-    image: docker.clarive.com/clarive-disp:latest
-    environment:
-        - CLARIVE_ENV=clarive
+      - clarive
+    depends_on: 
+      - web
+    command: /opt/clarive/local/sbin/nginx -c /opt/clarive/config/nginx.conf
+  web:
+    user: clarive
+    image: clarive/clarive:latest
     restart: always
-    links:
-      - db:db
+    volumes:
+      - ./logs:/opt/clarive/logs
+      - ./jobs:/opt/clarive/jobs
+      - ./tmp:/opt/clarive/tmp
+      - ./config:/opt/clarive/config
+      - ./repo:/opt/clarive/repo
+    networks:
+      - clarive
+    depends_on: 
+      - db
+    command: /opt/clarive/clarive/bin/cla web-start -c clarive
+  disp:
+    user: clarive
+    image: clarive/clarive:latest
+    restart: always
     volumes:
       - ./logs:/opt/clarive/logs
       - ./jobs:/opt/clarive/jobs
       - ./tmp:/opt/clarive/tmp
       - ./config:/opt/clarive/config:ro
+      - ./repo:/opt/clarive/repo
     networks:
-      - back
+      - clarive
+    depends_on: 
+      - db
+    command: /opt/clarive/clarive/bin/cla disp-start -c clarive
